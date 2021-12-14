@@ -1,10 +1,17 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const sgMail = require('@sendgrid/mail')
 
 const app = express();
 const router = express.Router();
+
 app.use(express.urlencoded({extended: true}));
 app.use(express.json());
+
+require('dotenv').config();
+const apiKey = process.env.SENDGRID_API_KEY
+sgMail.setApiKey(apiKey)
+
 
 //Modelos
 const PersonShema = require('./Models/Person.js');
@@ -16,6 +23,47 @@ mongoose.connect("mongodb+srv://rot:1@mintic01.k4mvd.mongodb.net/ActividadesDB?r
 router.get('/', (req,res) => {
     res.send("Ya se inicio la API");
 })
+
+router.get('/sendEmail', (req,res) =>{
+    const msg = {
+        to: req.body.destino, // Change to your recipient
+        from: 'danielvalenciacordero2@gmail.com', // Change to your verified sender
+        subject: req.body.asunto,
+        text: req.body.mensaje,
+        html: '<strong>and easy to do anywhere, even with Node.js</strong>',
+    }
+    sgMail
+    .send(msg)
+    .then(() => {
+        res.send('Email sent')
+    })
+    .catch((error) => {
+        res.send(error.message)
+    })
+})
+
+router.get('/sendSMS', (req,res) =>{
+    const accountSid = process.env.WILIO_ACCOUNT_SID
+    const authToken = process.env.TWILIO_AUTH_TOKEN
+    const client = require('twilio')(accountSid, authToken);
+    client.messages
+    .create({
+        body: req.body.mensaje,
+        from: '+19062845744',
+        to: '+57'+req.body.destino
+    })
+    .then(message => {
+        if(!message){
+            res.status(404).send("No se encontro ningun mensaje");
+        }else{
+            res.send("El mensaje se envio con exito");
+        }
+        })
+    .catch((error) => {
+        res.send(error.message)
+    })
+})
+
 router.get('/persona', (req,res) => {
     PersonShema.find(
         function(err,datos){
